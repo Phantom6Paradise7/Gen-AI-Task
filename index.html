@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Link Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <h1>QR Link Generator</h1>
+  <p class="sub">Paste a link to get a QR code. Anyone who scans it opens that link.</p>
+
+  <form id="f" novalidate>
+    <input type="text" id="url" placeholder="https://www.google.com/search?udm=50" aria-label="Link" autocomplete="off">
+    <button class="btn" type="submit">Generate QR</button>
+  </form>
+  <p class="hint">Sample: <button type="button" id="ex">Google AI Mode</button></p>
+  <p id="err" role="alert"></p>
+
+  <div class="preview">
+    <div class="qrbox" id="qrbox"><span>Your QR code will appear here</span></div>
+    <div class="cur" id="cur"></div>
+  </div>
+
+  <section class="saved">
+    <h2>Saved QR codes</h2>
+    <ul id="list"></ul>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <h3 id="dTitle"></h3>
+  <p id="dUrl"></p>
+  <img id="dImg" alt="Enlarged QR code">
+  <div class="row">
+    <button class="btn ghost small" id="dDl" type="button">Download PNG</button>
+    <button class="btn small" id="dClose" type="button">Close</button>
+  </div>
+</dialog>
+
+<script src="script.js"></script>
+</body>
+</html>
