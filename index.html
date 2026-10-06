@@ -1,47 +1,511 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QR Link Generator</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vortex QR — Smart URL QR Studio & Site Detection</title>
+  <meta name="description" content="Generate instant, scannable QR codes for any website link with smart site recognition, Google AI Mode samples, zoom lightbox, and saved QR vault.">
+  <meta name="theme-color" content="#070709">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Vendor Libraries (Local with fallback) -->
+  <script src="vendor/qrcode.min.js"></script>
+  <script src="vendor/jsQR.min.js"></script>
 </head>
 <body>
-<main>
-  <h1>QR Link Generator</h1>
-  <p class="sub">Paste a link to get a QR code. Anyone who scans it opens that link.</p>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow ambient-glow-1" aria-hidden="true"></div>
+  <div class="ambient-glow ambient-glow-2" aria-hidden="true"></div>
 
-  <form id="f" novalidate>
-    <input type="text" id="url" placeholder="https://www.google.com/search?udm=50" aria-label="Link" autocomplete="off">
-    <button class="btn" type="submit">Generate QR</button>
-  </form>
-  <p class="hint">Sample: <button type="button" id="ex">Google AI Mode</button></p>
-  <p id="err" role="alert"></p>
+  <!-- Toast notification system -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
-  <div class="preview">
-    <div class="qrbox" id="qrbox"><span>Your QR code will appear here</span></div>
-    <div class="cur" id="cur"></div>
+  <!-- Main Application Wrapper -->
+  <div class="app-container">
+    
+    <!-- Top Header -->
+    <header class="app-header" id="app-header">
+      <div class="header-brand">
+        <div class="brand-badge">
+          <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+            <rect x="14" y="14" width="3" height="3"></rect>
+            <path d="M17 17h4v4h-4z"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">VORTEX <span class="text-accent">QR</span></h1>
+          <p class="brand-subtitle">Smart URL QR Studio & Site Recognition</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Quick Sample Button for Google AI Mode -->
+        <button id="btn-quick-sample" class="btn btn-outline btn-sm sample-pill" title="Click to load Google AI Mode sample">
+          <span class="sample-sparkle">✨</span>
+          <span>Sample: <strong>Google AI Mode</strong></span>
+        </button>
+
+        <!-- Saved Count Badge -->
+        <div class="saved-counter-badge" id="saved-counter-badge" title="Number of saved QR codes">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span id="saved-count-num">0</span> Saved
+        </div>
+
+        <!-- Dark / Light Theme Toggle -->
+        <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle dark/light theme" title="Toggle Theme">
+          <svg id="theme-icon-sun" class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg id="theme-icon-moon" class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Mode Tabs -->
+    <nav class="mode-tabs" aria-label="Mode selection">
+      <button id="tab-btn-url" class="mode-tab-btn active" data-mode="url">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+        </svg>
+        <span>Link to QR Generator</span>
+      </button>
+      <button id="tab-btn-image" class="mode-tab-btn" data-mode="image">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+        <span>Scan QR Image / Detect Site</span>
+      </button>
+    </nav>
+
+    <!-- SECTION 1: URL Input Bar (Matching Wireframe Top) -->
+    <section class="card input-section" id="url-generator-section">
+      <div class="input-form-container">
+        
+        <!-- URL Input Row -->
+        <div class="input-row">
+          <div class="input-field-wrapper">
+            <span class="input-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+            </span>
+            <input 
+              type="url" 
+              id="url-input" 
+              class="text-input" 
+              placeholder="Paste website link (e.g., https://google.com/search?udm=14)..." 
+              autocomplete="off" 
+              spellcheck="false"
+              required
+            >
+            <button type="button" id="btn-paste" class="input-inline-btn" title="Paste from clipboard">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              </svg>
+              <span>Paste</span>
+            </button>
+            <button type="button" id="btn-clear-url" class="input-inline-btn btn-clear hidden" title="Clear input">✕</button>
+          </div>
+
+          <!-- Main Input Button -->
+          <button type="button" id="btn-generate" class="btn btn-primary btn-generate">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+              <path d="M14 14h3v3h-3z"></path>
+              <path d="M17 17h4v4h-4z"></path>
+            </svg>
+            <span>Generate QR</span>
+          </button>
+        </div>
+
+        <!-- Custom Website Title Row & Detection Indicator -->
+        <div class="custom-title-row">
+          <div class="title-input-wrapper">
+            <label for="site-title-input" class="input-label">
+              <span>Website Title / Name:</span>
+              <span class="detected-badge" id="detected-badge" style="display: none;">
+                <span class="pulse-dot"></span> Auto-Detected
+              </span>
+            </label>
+            <div class="title-field-inner">
+              <img id="site-favicon-preview" class="site-favicon" src="https://www.google.com/favicon.ico" alt="Favicon" onerror="this.style.display='none'">
+              <input 
+                type="text" 
+                id="site-title-input" 
+                class="text-input text-input-sm" 
+                placeholder="Name of the website (customize accordingly)..."
+                maxlength="60"
+              >
+            </div>
+          </div>
+
+          <!-- Quick Samples Selector -->
+          <div class="preset-chips-wrapper">
+            <span class="chips-label">Quick Samples:</span>
+            <div class="chips-container">
+              <button type="button" class="preset-chip active" data-url="https://www.google.com/search?q=Artificial+Intelligence&udm=14" data-title="Google AI Mode">
+                <span>Google AI Mode</span>
+              </button>
+              <button type="button" class="preset-chip" data-url="https://gemini.google.com" data-title="Google Gemini AI">
+                <span>Gemini AI</span>
+              </button>
+              <button type="button" class="preset-chip" data-url="https://github.com" data-title="GitHub">
+                <span>GitHub</span>
+              </button>
+              <button type="button" class="preset-chip" data-url="https://youtube.com" data-title="YouTube">
+                <span>YouTube</span>
+              </button>
+              <button type="button" class="preset-chip" data-url="https://wikipedia.org" data-title="Wikipedia">
+                <span>Wikipedia</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 1B: Image Scanner & Site Search Algo (Hidden unless Tab is selected) -->
+    <section class="card image-scanner-section hidden" id="image-scanner-section">
+      <div class="scanner-header">
+        <h2 class="scanner-title">Website Search Algorithm — Decode QR Image</h2>
+        <p class="scanner-subtitle">Upload or paste any QR code image. Our algorithm decodes the link, detects the target website, and regenerates the QR code.</p>
+      </div>
+
+      <div class="dropzone-container" id="image-dropzone">
+        <input type="file" id="qr-file-input" accept="image/*" class="file-input-hidden">
+        <div class="dropzone-content">
+          <div class="dropzone-icon-box">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+          </div>
+          <p class="dropzone-text-primary">Drag & drop your QR image here, or <span class="text-accent underline">browse files</span></p>
+          <p class="dropzone-text-secondary">Or simply press <kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd> to paste an image screenshot</p>
+        </div>
+      </div>
+
+      <!-- Decode Result Box -->
+      <div id="decode-result-box" class="decode-result-box hidden">
+        <div class="decode-status-header">
+          <span class="decode-status-icon">✓</span>
+          <div class="decode-status-info">
+            <h3 id="decode-site-name" class="decode-site-name">Detected Website</h3>
+            <p id="decode-site-url" class="decode-site-url">https://...</p>
+          </div>
+          <button id="btn-use-decoded" class="btn btn-primary btn-sm">Load Into Generator</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: Generated QR Image Area (Matching Wireframe Center) -->
+    <section class="card generated-qr-section" id="generated-qr-section">
+      <div class="qr-display-container">
+        
+        <!-- Left / Top: The QR Code Card Frame -->
+        <div class="qr-card-frame">
+          <div class="qr-code-wrapper" id="qr-code-wrapper" title="Click to zoom in">
+            <div id="qr-canvas-holder" class="qr-canvas-holder">
+              <!-- QR Code Canvas / Img dynamically injected here -->
+            </div>
+            <!-- Click to zoom hover overlay -->
+            <div class="qr-zoom-overlay">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="11" y1="8" x2="11" y2="14"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+              </svg>
+              <span>Click to Zoom</span>
+            </div>
+          </div>
+
+          <!-- Live Scan Status Badge -->
+          <div class="qr-status-pill">
+            <span class="status-indicator"></span>
+            <span>Live Scan Ready &bull; Direct Redirect</span>
+          </div>
+        </div>
+
+        <!-- Right: QR Metadata & Action Buttons -->
+        <div class="qr-details-frame">
+          
+          <div class="qr-meta-header">
+            <div class="qr-meta-title-group">
+              <div class="title-with-badge">
+                <img id="active-site-favicon" class="active-favicon" src="https://www.google.com/favicon.ico" alt="Favicon">
+                <h2 id="active-site-title" class="active-site-title">Google AI Mode</h2>
+              </div>
+              <p id="active-site-domain" class="active-site-domain">google.com</p>
+            </div>
+            <div class="qr-scan-badge">
+              <span>Encodes 100% Direct URL</span>
+            </div>
+          </div>
+
+          <div class="target-url-box">
+            <span class="url-label">Redirect Destination:</span>
+            <div class="url-text-container">
+              <code id="active-site-url" class="active-site-url">https://www.google.com/search?q=Artificial+Intelligence&udm=14</code>
+            </div>
+          </div>
+
+          <!-- Actions Grid -->
+          <div class="qr-action-buttons-grid">
+            <!-- Save to List Button -->
+            <button type="button" id="btn-save-qr" class="btn btn-primary btn-save">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              <span>Save to List</span>
+            </button>
+
+            <!-- Zoom in Button -->
+            <button type="button" id="btn-zoom-active" class="btn btn-outline" title="Zoom in on QR code">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="11" y1="8" x2="11" y2="14"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+              </svg>
+              <span>Zoom In</span>
+            </button>
+
+            <!-- Test Link Redirect -->
+            <a id="btn-test-redirect" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline" title="Test scanning redirection in new tab">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+              <span>Test Redirect Link</span>
+            </a>
+
+            <!-- Download PNG -->
+            <button type="button" id="btn-download-png" class="btn btn-outline" title="Download High-Res PNG">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Download PNG</span>
+            </button>
+
+            <!-- Copy Link -->
+            <button type="button" id="btn-copy-url" class="btn btn-outline" title="Copy redirect link">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span>Copy Link</span>
+            </button>
+
+            <!-- Share QR -->
+            <button type="button" id="btn-share-qr" class="btn btn-outline" title="Share QR Code">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              </svg>
+              <span>Share</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 3: Saved QR List (Matching Wireframe Bottom & Isometric Design) -->
+    <section class="card saved-list-section" id="saved-list-section">
+      
+      <!-- List Header & Search Filter Bar -->
+      <div class="saved-list-header">
+        <div class="list-title-group">
+          <h2 class="list-title">Saved QR Vault</h2>
+          <span class="list-subtitle">Your collection of customized website QR codes</span>
+        </div>
+
+        <!-- Search Bar Algorithm to find saved websites -->
+        <div class="search-filter-box">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input 
+              type="text" 
+              id="search-saved-input" 
+              class="text-input search-input" 
+              placeholder="Search saved sites by title or URL..." 
+              autocomplete="off"
+            >
+            <button type="button" id="btn-clear-search" class="btn-clear-search hidden" title="Clear search">✕</button>
+          </div>
+
+          <!-- Clear All Button -->
+          <button type="button" id="btn-clear-all" class="btn btn-ghost btn-sm text-danger" title="Delete all saved QR codes">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            <span>Clear All</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Saved Cards Container: Layout follows wireframe (Name of website on left, QR image on right) -->
+      <div id="saved-items-container" class="saved-items-grid">
+        <!-- Dynamically populated cards will be injected here -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="saved-empty-state" class="saved-empty-state hidden">
+        <div class="empty-icon-box">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+            <path d="M14 14h3v3h-3z"></path>
+          </svg>
+        </div>
+        <h3 class="empty-title">No Saved QR Codes Yet</h3>
+        <p class="empty-desc">Generate a QR code above and click <strong>"Save to List"</strong> to build your vault.</p>
+        <button type="button" id="btn-empty-sample" class="btn btn-primary btn-sm">Load Google AI Mode Sample</button>
+      </div>
+
+    </section>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Vortex QR Studio &bull; Built with Black, Pure White &amp; Crimson Red aesthetics &bull; Client-side &amp; 100% Private</p>
+    </footer>
+
   </div>
 
-  <section class="saved">
-    <h2>Saved QR codes</h2>
-    <ul id="list"></ul>
-  </section>
-</main>
+  <!-- LIGHTBOX / ZOOM MODAL (For Zooming in saved images) -->
+  <dialog id="zoom-dialog" class="zoom-dialog" aria-labelledby="modal-site-title">
+    <div class="zoom-dialog-backdrop" id="zoom-backdrop"></div>
+    <div class="zoom-dialog-content">
+      
+      <!-- Modal Header -->
+      <div class="zoom-dialog-header">
+        <div class="modal-title-group">
+          <img id="modal-site-favicon" class="modal-favicon" src="https://www.google.com/favicon.ico" alt="Favicon">
+          <div>
+            <h3 id="modal-site-title" class="modal-site-title">Website Name</h3>
+            <p id="modal-site-url" class="modal-site-url">https://example.com</p>
+          </div>
+        </div>
+        <button type="button" id="btn-close-zoom" class="modal-close-btn" aria-label="Close zoom preview">✕</button>
+      </div>
 
-<dialog id="dlg">
-  <h3 id="dTitle"></h3>
-  <p id="dUrl"></p>
-  <img id="dImg" alt="Enlarged QR code">
-  <div class="row">
-    <button class="btn ghost small" id="dDl" type="button">Download PNG</button>
-    <button class="btn small" id="dClose" type="button">Close</button>
-  </div>
-</dialog>
+      <!-- Zoom Canvas Area -->
+      <div class="zoom-stage" id="zoom-stage">
+        <div class="zoom-image-wrapper" id="zoom-image-wrapper">
+          <img id="zoom-target-img" class="zoom-target-img" src="" alt="Zoomed QR Code">
+        </div>
+        <div class="zoom-instruction-hint">Scroll wheel or use controls below to zoom &bull; Double click to reset</div>
+      </div>
 
-<script src="script.js"></script>
+      <!-- Zoom Controls Bar -->
+      <div class="zoom-toolbar">
+        <div class="zoom-controls-cluster">
+          <button type="button" id="btn-zoom-out" class="zoom-ctrl-btn" title="Zoom Out (-)">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <input type="range" id="zoom-slider" class="zoom-slider" min="100" max="400" value="100" step="10">
+          <span id="zoom-level-text" class="zoom-level-text">100%</span>
+          <button type="button" id="btn-zoom-in" class="zoom-ctrl-btn" title="Zoom In (+)">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <button type="button" id="btn-zoom-reset" class="btn btn-outline btn-xs" title="Reset zoom">Reset</button>
+        </div>
+
+        <div class="zoom-modal-actions">
+          <a id="btn-modal-open-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+            <span>Test Link</span>
+          </a>
+          <button type="button" id="btn-modal-download" class="btn btn-primary btn-sm">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Download High-Res</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </dialog>
+
+  <!-- Edit Title Modal -->
+  <dialog id="edit-title-dialog" class="edit-title-dialog">
+    <div class="zoom-dialog-backdrop" id="edit-backdrop"></div>
+    <div class="edit-dialog-content">
+      <div class="edit-dialog-header">
+        <h3>Edit Website Name</h3>
+        <button type="button" id="btn-close-edit" class="modal-close-btn">✕</button>
+      </div>
+      <div class="edit-dialog-body">
+        <label for="edit-title-input" class="input-label">Custom Website Title:</label>
+        <input type="text" id="edit-title-input" class="text-input" placeholder="Enter custom title...">
+      </div>
+      <div class="edit-dialog-footer">
+        <button type="button" id="btn-cancel-edit" class="btn btn-outline btn-sm">Cancel</button>
+        <button type="button" id="btn-confirm-edit" class="btn btn-primary btn-sm">Save Changes</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Main Application Script -->
+  <script src="app.js"></script>
 </body>
 </html>
